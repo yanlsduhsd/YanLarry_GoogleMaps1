@@ -6,6 +6,7 @@ import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -36,7 +37,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private LocationManager locationManager;
     private Location myLocation;
 
-    private final double SEARCH_DISTANCE = 5.0/60.0;
+    private boolean gotMylocationOneTime;
+    private boolean isGPSEnabled = false;
+    private boolean isNetworkEnabled = false;
+
+    private static final long MIN_TIME_BW_UPDATES = 1000*5;
+    private static final float MIN_DISTANCE_CHANGE_FOR_UPDATES = 0.0f;
+    private static final int MY_LOC_ZOOM_FACTOR = 1;
+
+    private static final double SEARCH_DISTANCE = 5.0/60.0;
+    private static final String TAG = "MyMapsApp";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +92,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         locationSearch = (EditText) findViewById(R.id.editText);
+
+        gotMylocationOneTime = false;
+        getLocation();
     }
 
     public void changeView(View view) {
@@ -154,4 +167,77 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
+
+    public void getLocation() {
+        try {
+            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+            isGPSEnabled = locationManager.isProviderEnabled(locationManager.GPS_PROVIDER);
+            if (isGPSEnabled) Log.d("MyMapsApp", "getLocation: GPS is enabled");
+
+            isNetworkEnabled = locationManager.isProviderEnabled(locationManager.NETWORK_PROVIDER);
+            if (isNetworkEnabled) Log.d(TAG, "getLocation: Network is enabled");
+
+            if (!(isGPSEnabled||isNetworkEnabled)) {
+                Log.d(TAG, "getLocation: no provider is enabled!");
+            } else {
+                if (isNetworkEnabled) {
+                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+
+                    }
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerNetwork);
+                }
+            }
+
+            if (isGPSEnabled) {
+                //launch locationlistener in gps
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "getLocation: Caught exception");
+            e.printStackTrace();
+        }
+    }
+
+    LocationListener locationListenerNetwork = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+
+            dropAmarker(LocationManager.NETWORK_PROVIDER);
+
+            if (gotMylocationOneTime == false) {
+                locationManager.removeUpdates(this);
+                locationManager.removeUpdates(locationListenerGps);
+                gotMylocationOneTime = true;
+            } else {
+                if (isNetworkEnabled) {
+                    if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                            && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+
+                    }
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerNetwork);
+                }
+            }
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            Log.d(TAG, "onStatusChanged: locationListenerNetwork: status change");
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+
+        }
+    };
+
+
 }
