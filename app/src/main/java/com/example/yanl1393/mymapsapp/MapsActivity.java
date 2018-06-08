@@ -148,8 +148,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (!location.matches("")) {
             //create Geocoder
             Geocoder geocoder = new Geocoder(this, Locale.US);
-
+            Log.d(TAG, "onSearch: location text is "+location);
             try {
+                Log.d(TAG, "onSearch: "+(userLocation.latitude - SEARCH_DISTANCE)+""+(userLocation.longitude - SEARCH_DISTANCE)+(userLocation.latitude + SEARCH_DISTANCE)+(userLocation.longitude + SEARCH_DISTANCE));
                 addressList = geocoder.getFromLocationName(location, 100,
                         userLocation.latitude - SEARCH_DISTANCE,
                         userLocation.longitude - SEARCH_DISTANCE,
@@ -166,10 +167,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 for (int i = 0; i<addressList.size(); i++) {
                     Address address = addressList.get(i);
-                    LatLng latLng = new LatLng(address.getLatitude(), address.getLatitude());
+                    LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
                     mMap.addMarker(new MarkerOptions().position(latLng).title(i + ": " + address.getSubThoroughfare()));
+                    Log.d(TAG, "onSearch: " + address.getSubThoroughfare());
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
                 }
+            } else {
+                Log.d(TAG, "onSearch: empty");
+                Toast.makeText(this, "No locations were found for the search term \"" + location + "\" .", Toast.LENGTH_SHORT);
             }
         }
     }
@@ -261,7 +266,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
-Toast.makeText(MapsActivity.this, "Things are happening", Toast.LENGTH_SHORT);
+            Toast.makeText(MapsActivity.this, "Things are happening", Toast.LENGTH_SHORT).show();
             switch (status) {
                 case LocationProvider.AVAILABLE:
                     //printout logd/toast;
@@ -309,6 +314,10 @@ Toast.makeText(MapsActivity.this, "Things are happening", Toast.LENGTH_SHORT);
                             }
                             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerNetwork);
                         }
+                    }
+
+                    if (isGPSEnabled) {
+                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerGps);
                     }
             }
         }
@@ -365,5 +374,8 @@ Toast.makeText(MapsActivity.this, "Things are happening", Toast.LENGTH_SHORT);
 
     public void clearStuff(View view) {
         mMap.clear();
+
+        LatLng place = new LatLng(32.885939, -117.221751);
+        mMap.addMarker(new MarkerOptions().position(place).title("Born Here (ish)"));
     }
 }
